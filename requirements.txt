@@ -1,3 +1,5 @@
 # Authenticated AES-256-GCM encryption. Do not replace this with custom crypto.
 cryptography>=41.0,<46.0
-
+fastapi>=0.115,<0.130
+PyJWT>=2.8,<3.0
+uvicorn>=0.30,<1.0

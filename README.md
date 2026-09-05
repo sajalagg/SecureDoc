@@ -22,3 +22,17 @@ that value.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the design, security decisions, public
 functions, and current limitations.
+
+## Run the API locally
+
+Set `SECUREDOC_MASTER_KEY_BASE64` and a 32+ character `SECUREDOC_AUTH_SECRET`
+from `.env.example` in your environment, then create the first administrator
+locally (public registration can create only USER accounts):
+
+```bash
+PYTHONPATH=backend python -m app.bootstrap_admin
+PYTHONPATH=backend uvicorn app.api.main:app --reload
+```
+
+Open `http://127.0.0.1:8000/docs` to use FastAPI's generated interactive API
+documentation. Never use the development server directly on a public network.

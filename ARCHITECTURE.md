@@ -69,6 +69,18 @@ numbers, or keys.
 FastAPI will call these services in the next milestone rather than duplicating
 their encryption, authorization, or persistence logic.
 
+## API layer
+
+FastAPI is a thin authenticated transport layer in `app.api.main`. It exposes
+registration/login, scan preview, protected document creation/list/retrieval,
+ADMIN-only decryption, and ADMIN-only audit retrieval. Login issues a signed,
+30-minute Bearer token. The API signing secret is separate from the encryption
+master key and must be at least 32 bytes.
+
+Public registration creates only `USER` accounts. The first `ADMIN` is created by
+the local `python -m app.bootstrap_admin` command, preventing an attacker from
+making themselves an administrator through a public endpoint.
+
 ## Why placeholders instead of replacement offsets
 
 Original offsets identify exactly what was encrypted in the source. But a
