@@ -3,7 +3,7 @@
 Backend-only college project for selectively encrypting sensitive fragments in a
 document while preserving normal text.
 
-## Milestone 1: run locally
+## Milestone 2: run locally
 
 Create an isolated environment and install the declared packages:
 
@@ -14,6 +14,11 @@ source .venv/bin/activate       # macOS/Linux
 python -m pip install -r requirements-dev.txt
 python -m pytest -v
 ```
+
+For the master-key workflow, generate a local value using the command in
+`.env.example`, copy it to an ignored `.env` file, and expose it to your shell or
+future application configuration as `SECUREDOC_MASTER_KEY_BASE64`. Do not commit
+that value.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the design, security decisions, public
 functions, and current limitations.
