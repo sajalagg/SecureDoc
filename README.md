@@ -36,3 +36,10 @@ PYTHONPATH=backend uvicorn app.api.main:app --reload
 
 Open `http://127.0.0.1:8000/docs` to use FastAPI's generated interactive API
 documentation. Never use the development server directly on a public network.
+
+## Upload a TXT file
+
+After authorizing in `/docs`, use `POST /documents/upload`. Select a UTF-8 `.txt`
+file and optionally provide a `document_id`. SecureDoc accepts files up to 1 MB,
+records the source filename, and selectively protects detected spans with the
+same pipeline used for pasted text.

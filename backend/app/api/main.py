@@ -5,12 +5,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
 from app.auth.auth import AuthorizationError, Role, User
 from app.auth.tokens import TokenError, create_access_token, read_access_token
+from app.documents.adapters import DocumentFormatError, TextDocumentAdapter
 from app.services.document_service import scan_document
 from app.services.security_service import (
     authenticate_user, create_document, decrypt_document_as_admin,
@@ -105,6 +106,24 @@ def create_app(database_path: Optional[Path] = None) -> FastAPI:
         document_id = request.document_id or str(uuid4())
         try:
             document = create_document(repository, user, document_id, request.text)
+        except ValueError as error:
+            raise HTTPException(status.HTTP_409_CONFLICT, str(error))
+        return _document_response(document)
+
+    @app.post("/documents/upload", status_code=status.HTTP_201_CREATED)
+    async def upload_and_protect(
+        file: UploadFile = File(...),
+        document_id: Optional[str] = Form(default=None),
+        user: User = Depends(current_user),
+    ):
+        """Validate a UTF-8 TXT upload, selectively protect it, and store its source filename."""
+        filename = file.filename or "uploaded.txt"
+        try:
+            text = TextDocumentAdapter.read(filename, await file.read())
+        except DocumentFormatError as error:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(error))
+        try:
+            document = create_document(repository, user, document_id or str(uuid4()), text, filename)
         except ValueError as error:
             raise HTTPException(status.HTTP_409_CONFLICT, str(error))
         return _document_response(document)

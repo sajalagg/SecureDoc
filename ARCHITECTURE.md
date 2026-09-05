@@ -81,6 +81,18 @@ Public registration creates only `USER` accounts. The first `ADMIN` is created b
 the local `python -m app.bootstrap_admin` command, preventing an attacker from
 making themselves an administrator through a public endpoint.
 
+## TXT document adapter
+
+`app.documents.adapters.TextDocumentAdapter` is the boundary between uploaded
+files and the text-only core. It accepts only `.txt` filenames, limits uploads to
+1 MB, requires UTF-8, and preserves the decoded text exactly. The adapter passes
+normalized text to the same detection/encryption pipeline used by JSON requests.
+
+`POST /documents/upload` accepts multipart form data with a required `file` and
+an optional `document_id`. Its response records the source filename in encrypted
+document metadata. Future DOCX/PDF adapters should expose the same `read`/`write`
+contract, leaving detection, encryption, key management, RBAC, and storage intact.
+
 ## Why placeholders instead of replacement offsets
 
 Original offsets identify exactly what was encrypted in the source. But a

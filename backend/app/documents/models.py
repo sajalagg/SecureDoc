@@ -110,6 +110,7 @@ class ProtectedDocument:
     protected_text: str
     encrypted_fragments: List[EncryptedFragment] = field(default_factory=list)
     wrapped_document_key: Optional[WrappedDocumentKey] = None
+    source_filename: Optional[str] = None
 
     def metadata(self) -> Dict[str, object]:
         """Return serializable metadata; encryption keys are never included."""
@@ -120,6 +121,8 @@ class ProtectedDocument:
         }
         if self.wrapped_document_key is not None:
             metadata["key_envelope"] = self.wrapped_document_key.to_dict()
+        if self.source_filename is not None:
+            metadata["source_filename"] = self.source_filename
         return metadata
 
     @classmethod
@@ -128,4 +131,5 @@ class ProtectedDocument:
         fragments = [EncryptedFragment.from_dict(item) for item in metadata.get("encrypted_spans", [])]
         envelope_data = metadata.get("key_envelope")
         envelope = WrappedDocumentKey.from_dict(envelope_data) if envelope_data else None
-        return cls(document_id, protected_text, fragments, envelope)
+        source_filename = metadata.get("source_filename")
+        return cls(document_id, protected_text, fragments, envelope, str(source_filename) if source_filename else None)

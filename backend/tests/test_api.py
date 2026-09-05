@@ -44,3 +44,19 @@ def test_api_rejects_missing_or_invalid_bearer_token(tmp_path, monkeypatch):
     client = TestClient(create_app(tmp_path / "api.db"))
     assert client.get("/documents").status_code == 401
     assert client.get("/documents", headers={"Authorization": "Bearer invalid"}).status_code == 401
+
+
+def test_api_uploads_and_protects_a_utf8_txt_file(tmp_path, monkeypatch):
+    monkeypatch.setenv(MASTER_KEY_ENVIRONMENT_VARIABLE, encode_key(generate_key()))
+    monkeypatch.setenv(AUTH_SECRET_ENVIRONMENT_VARIABLE, "test-only-signing-secret-with-32-bytes")
+    client = TestClient(create_app(tmp_path / "api.db"))
+    token = client.post("/auth/register", json={"username": "fileuser", "password": "FileUserPass123"}).json()["access_token"]
+    response = client.post(
+        "/documents/upload",
+        headers={"Authorization": f"Bearer {token}"},
+        data={"document_id": "file-doc"},
+        files={"file": ("secrets.txt", b"Server: prod\nPassword: FilePassword123\n", "text/plain")},
+    )
+    assert response.status_code == 201
+    assert "FilePassword123" not in str(response.json())
+    assert response.json()["metadata"]["source_filename"] == "secrets.txt"
