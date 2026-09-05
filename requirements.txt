@@ -1,0 +1,3 @@
+# Authenticated AES-256-GCM encryption. Do not replace this with custom crypto.
+cryptography>=41.0,<46.0
+
