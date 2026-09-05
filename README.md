@@ -3,7 +3,7 @@
 Backend-only college project for selectively encrypting sensitive fragments in a
 document while preserving normal text.
 
-## Milestone 2: run locally
+## Milestone 3: run locally
 
 Create an isolated environment and install the declared packages:
 
