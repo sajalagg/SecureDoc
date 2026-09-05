@@ -2,6 +2,7 @@
 
 import json
 import sqlite3
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional, Union
@@ -35,18 +36,21 @@ class SQLiteRepository:
 
     def __init__(self, database_path: Union[str, Path]):
         """Open a cross-platform SQLite database and ensure its schema exists."""
-        self.connection = sqlite3.connect(str(Path(database_path)))
+        self.connection = sqlite3.connect(str(Path(database_path)), check_same_thread=False)
         self.connection.row_factory = sqlite3.Row
+        self._lock = threading.RLock()
         self.connection.execute("PRAGMA foreign_keys = ON")
         self._create_schema()
 
     def close(self) -> None:
         """Close the underlying SQLite connection."""
-        self.connection.close()
+        with self._lock:
+            self.connection.close()
 
     def _create_schema(self) -> None:
         """Create the prototype tables if they do not already exist."""
-        self.connection.executescript("""
+        with self._lock:
+            self.connection.executescript("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 username TEXT NOT NULL UNIQUE,
@@ -69,41 +73,62 @@ class SQLiteRepository:
                 action TEXT NOT NULL,
                 result TEXT NOT NULL
             );
-        """)
-        self.connection.commit()
+            """)
+            self.connection.commit()
 
     def create_user(self, username: str, password_hash: str, role: Role) -> User:
         """Store a new user with an already-derived password hash."""
         try:
-            cursor = self.connection.execute("INSERT INTO users(username, password_hash, role) VALUES (?, ?, ?)", (username, password_hash, role.value))
-            self.connection.commit()
+            with self._lock:
+                cursor = self.connection.execute("INSERT INTO users(username, password_hash, role) VALUES (?, ?, ?)", (username, password_hash, role.value))
+                self.connection.commit()
         except sqlite3.IntegrityError as error:
             raise ValueError("Username already exists.") from error
         return User(cursor.lastrowid, username, role)
 
     def get_user_with_hash(self, username: str):
         """Return the safe user and stored hash for authentication, or ``None``."""
-        row = self.connection.execute("SELECT id, username, password_hash, role FROM users WHERE username = ?", (username,)).fetchone()
+        with self._lock:
+            row = self.connection.execute("SELECT id, username, password_hash, role FROM users WHERE username = ?", (username,)).fetchone()
         if row is None:
             return None
         return User(row["id"], row["username"], Role(row["role"])), row["password_hash"]
 
+    def get_user_by_id(self, user_id: int) -> Optional[User]:
+        """Load a current safe user identity for a verified bearer-token subject."""
+        with self._lock:
+            row = self.connection.execute("SELECT id, username, role FROM users WHERE id = ?", (user_id,)).fetchone()
+        return None if row is None else User(row["id"], row["username"], Role(row["role"]))
+
+    def list_documents(self, owner_user_id: Optional[int] = None) -> List[StoredDocument]:
+        """List protected documents, optionally restricted to one owning user."""
+        query = "SELECT id, owner_user_id, protected_text, metadata_json FROM documents"
+        parameters = () if owner_user_id is None else (owner_user_id,)
+        if owner_user_id is not None:
+            query += " WHERE owner_user_id = ?"
+        with self._lock:
+            rows = self.connection.execute(query + " ORDER BY created_at, id", parameters).fetchall()
+        return [StoredDocument(row["owner_user_id"], ProtectedDocument.from_storage(row["id"], row["protected_text"], json.loads(row["metadata_json"]))) for row in rows]
+
     def save_document(self, document: ProtectedDocument, owner_user_id: int) -> None:
         """Store protected text and metadata only; plaintext never reaches this method."""
-        self.connection.execute("INSERT INTO documents(id, owner_user_id, protected_text, metadata_json) VALUES (?, ?, ?, ?)", (document.document_id, owner_user_id, document.protected_text, json.dumps(document.metadata())))
-        self.connection.commit()
+        with self._lock:
+            self.connection.execute("INSERT INTO documents(id, owner_user_id, protected_text, metadata_json) VALUES (?, ?, ?, ?)", (document.document_id, owner_user_id, document.protected_text, json.dumps(document.metadata())))
+            self.connection.commit()
 
     def get_document(self, document_id: str) -> Optional[StoredDocument]:
         """Load a protected document and reconstruct its typed metadata model."""
-        row = self.connection.execute("SELECT owner_user_id, protected_text, metadata_json FROM documents WHERE id = ?", (document_id,)).fetchone()
+        with self._lock:
+            row = self.connection.execute("SELECT owner_user_id, protected_text, metadata_json FROM documents WHERE id = ?", (document_id,)).fetchone()
         if row is None:
             return None
         return StoredDocument(row["owner_user_id"], ProtectedDocument.from_storage(document_id, row["protected_text"], json.loads(row["metadata_json"])))
 
     def log_event(self, action: AuditAction, result: str, user_id: Optional[int] = None, document_id: Optional[str] = None) -> None:
         """Persist a security event using IDs and outcomes only, never secret values."""
-        self.connection.execute("INSERT INTO audit_logs(user_id, document_id, action, result) VALUES (?, ?, ?, ?)", (user_id, document_id, action.value, result))
-        self.connection.commit()
+        with self._lock:
+            self.connection.execute("INSERT INTO audit_logs(user_id, document_id, action, result) VALUES (?, ?, ?, ?)", (user_id, document_id, action.value, result))
+            self.connection.commit()
 
     def get_audit_records(self, document_id: Optional[str] = None) -> List[AuditRecord]:
         """Return audit records for review, optionally limited to one document."""
@@ -111,5 +136,6 @@ class SQLiteRepository:
         parameters = () if document_id is None else (document_id,)
         if document_id is not None:
             query += " WHERE document_id = ?"
-        rows = self.connection.execute(query + " ORDER BY id", parameters).fetchall()
+        with self._lock:
+            rows = self.connection.execute(query + " ORDER BY id", parameters).fetchall()
         return [AuditRecord(row["timestamp"], row["user_id"], row["document_id"], row["action"], row["result"]) for row in rows]
