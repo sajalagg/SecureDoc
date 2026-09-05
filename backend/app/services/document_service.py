@@ -28,12 +28,12 @@ def decrypt_document(protected_document: ProtectedDocument, key: bytes) -> str:
     return reconstruct_text(protected_document, key)
 
 
-def protect_document_with_master_key(text: str, document_id: str) -> ProtectedDocument:
+def protect_document_with_master_key(text: str, document_id: str, source_filename: str = None) -> ProtectedDocument:
     """Create a per-document key, protect text, and store only its encrypted envelope."""
     master_key = load_master_key()
     document_key = generate_document_key()
     protected = protect_document(text, document_id, document_key)
-    return replace(protected, wrapped_document_key=wrap_document_key(document_key, master_key, document_id))
+    return replace(protected, wrapped_document_key=wrap_document_key(document_key, master_key, document_id), source_filename=source_filename)
 
 
 def decrypt_document_with_master_key(protected_document: ProtectedDocument) -> str:

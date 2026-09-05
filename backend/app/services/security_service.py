@@ -23,9 +23,9 @@ def authenticate_user(repository: SQLiteRepository, username: str, password: str
     return record[0]
 
 
-def create_document(repository: SQLiteRepository, user: User, document_id: str, text: str):
+def create_document(repository: SQLiteRepository, user: User, document_id: str, text: str, source_filename: str = None):
     """Protect and store a document owned by the authenticated user."""
-    document = protect_document_with_master_key(text, document_id)
+    document = protect_document_with_master_key(text, document_id, source_filename)
     repository.save_document(document, user.user_id)
     repository.log_event(AuditAction.DOCUMENT_CREATED, "SUCCESS", user.user_id, document_id)
     return document
