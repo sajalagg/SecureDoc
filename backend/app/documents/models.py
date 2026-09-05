@@ -76,6 +76,11 @@ class EncryptedFragment:
             "auth_tag": self.auth_tag_b64,
         }
 
+    @classmethod
+    def from_dict(cls, data: Dict[str, object]) -> "EncryptedFragment":
+        """Rebuild encrypted-fragment metadata read from trusted SQLite storage."""
+        return cls(str(data["id"]), str(data["placeholder"]), SensitiveType(str(data["type"])), int(data["original_start"]), int(data["original_end"]), str(data["ciphertext"]), str(data["nonce"]), str(data["auth_tag"]))
+
 
 @dataclass(frozen=True)
 class WrappedDocumentKey:
@@ -90,6 +95,11 @@ class WrappedDocumentKey:
     def to_dict(self) -> Dict[str, object]:
         """Return JSON-ready metadata without the plaintext document or master key."""
         return {"algorithm": self.algorithm, "key_version": self.key_version, "ciphertext": self.ciphertext_b64, "nonce": self.nonce_b64, "auth_tag": self.auth_tag_b64}
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, object]) -> "WrappedDocumentKey":
+        """Rebuild an encrypted key envelope from trusted SQLite metadata."""
+        return cls(str(data["ciphertext"]), str(data["nonce"]), str(data["auth_tag"]), str(data.get("algorithm", "AES-256-GCM")), int(data.get("key_version", 1)))
 
 
 @dataclass(frozen=True)
@@ -111,3 +121,11 @@ class ProtectedDocument:
         if self.wrapped_document_key is not None:
             metadata["key_envelope"] = self.wrapped_document_key.to_dict()
         return metadata
+
+    @classmethod
+    def from_storage(cls, document_id: str, protected_text: str, metadata: Dict[str, object]) -> "ProtectedDocument":
+        """Recreate a protected document from its SQLite text and JSON metadata."""
+        fragments = [EncryptedFragment.from_dict(item) for item in metadata.get("encrypted_spans", [])]
+        envelope_data = metadata.get("key_envelope")
+        envelope = WrappedDocumentKey.from_dict(envelope_data) if envelope_data else None
+        return cls(document_id, protected_text, fragments, envelope)
