@@ -6,7 +6,7 @@ plaintext value is available only while the protection pipeline is running.
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 
 class SensitiveType(str, Enum):
@@ -78,18 +78,36 @@ class EncryptedFragment:
 
 
 @dataclass(frozen=True)
+class WrappedDocumentKey:
+    """A document key encrypted by the local master key, safe to store as metadata."""
+
+    ciphertext_b64: str
+    nonce_b64: str
+    auth_tag_b64: str
+    algorithm: str = "AES-256-GCM"
+    key_version: int = 1
+
+    def to_dict(self) -> Dict[str, object]:
+        """Return JSON-ready metadata without the plaintext document or master key."""
+        return {"algorithm": self.algorithm, "key_version": self.key_version, "ciphertext": self.ciphertext_b64, "nonce": self.nonce_b64, "auth_tag": self.auth_tag_b64}
+
+
+@dataclass(frozen=True)
 class ProtectedDocument:
     """Protected text and the metadata required to reconstruct it."""
 
     document_id: str
     protected_text: str
     encrypted_fragments: List[EncryptedFragment] = field(default_factory=list)
+    wrapped_document_key: Optional[WrappedDocumentKey] = None
 
     def metadata(self) -> Dict[str, object]:
         """Return serializable metadata; encryption keys are never included."""
-        return {
+        metadata = {
             "document_id": self.document_id,
             "version": 1,
             "encrypted_spans": [fragment.to_dict() for fragment in self.encrypted_fragments],
         }
-
+        if self.wrapped_document_key is not None:
+            metadata["key_envelope"] = self.wrapped_document_key.to_dict()
+        return metadata

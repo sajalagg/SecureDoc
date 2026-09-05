@@ -1,4 +1,4 @@
-# SecureDoc architecture — Milestone 1
+# SecureDoc architecture — Milestone 2
 
 ## Goal
 
@@ -9,11 +9,11 @@ server; those are later layers around this tested core.
 ## Pipeline
 
 ```text
-plain text → detector → exact Detection spans → protector → protected text + metadata
-                                                                  ↓
-document key → AES-256-GCM encryption                         reconstruction
-                                                                  ↓
-                                                            original plain text
+master key → wraps a random document key → encrypted key envelope
+                  ↓
+plain text → detector → exact spans → protector → protected text + metadata
+                  ↓
+document key → AES-256-GCM fragment encryption → reconstruction → original text
 ```
 
 `app.services.document_service` is the friendly entry point:
@@ -22,21 +22,25 @@ document key → AES-256-GCM encryption                         reconstruction
 - `protect_document(text, document_id, key)` scans and replaces only detected
   values with `[SECUREDOC:<uuid>]` placeholders.
 - `decrypt_document(protected_document, key)` verifies every fragment and restores
-  the original text.
+  the original text. It remains useful for lower-level tests.
+- `protect_document_with_master_key(text, document_id)` is the preferred stored-
+  document operation: it creates, uses, and wraps a per-document key.
+- `decrypt_document_with_master_key(protected_document)` unwraps that key and
+  reconstructs the document. A future authorization layer will guard this call.
 
 ## Cryptographic decision
 
-Each document is intended to have its own random 32-byte AES-256 key. Every
-fragment receives a new random 96-bit nonce and uses AES-GCM authenticated
-encryption from the established `cryptography` library. Associated data binds a
-fragment to its document ID, fragment ID, and category. The key is deliberately
-absent from `ProtectedDocument.metadata()`.
+Each document receives a random 32-byte AES-256 key. Every fragment gets a fresh
+random 96-bit nonce and uses AES-GCM authenticated encryption from the established
+`cryptography` library. The document key is then encrypted (wrapped) by a
+separately configured 32-byte master key, also with AES-GCM. Associated data binds
+fragments to their document ID, fragment ID, and category and binds a key envelope
+to its document ID and version.
 
-For this learning prototype, application configuration can supply the document key
-from an ignored `.env` file. The next security milestone should introduce a random
-per-document key encrypted (wrapped) by a configured master key. That is more
-securely compartmentalised than one global encryption key, while being far simpler
-than implementing an external key-management service now.
+The master key is read from `SECUREDOC_MASTER_KEY_BASE64`; it is never generated
+silently, stored in metadata, or committed to Git. The ignored `.env` file remains
+acceptable only for a local prototype. Production systems should use a dedicated
+key-management service.
 
 ## Why placeholders instead of replacement offsets
 
@@ -54,4 +58,3 @@ validation.
   classify them as personal rather than secret data.
 - A caller must enforce authentication and authorization before it calls
   `decrypt_document`. RBAC and audit logging are later milestones.
-
