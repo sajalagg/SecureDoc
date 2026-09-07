@@ -4,17 +4,17 @@ const STATUS_META = {
   protected: {
     label: "Protected",
     icon: ShieldCheck,
-    classes: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    classes: "border-emerald-500/40 bg-emerald-500/10 text-emerald-400",
   },
   pending: {
     label: "Pending",
     icon: Clock,
-    classes: "border-amber-200 bg-amber-50 text-amber-700",
+    classes: "border-amber-500/40 bg-amber-500/10 text-amber-400",
   },
   "needs-attention": {
     label: "Needs Attention",
     icon: TriangleAlert,
-    classes: "border-rose-200 bg-rose-50 text-rose-700",
+    classes: "border-rose-500/40 bg-rose-500/10 text-rose-400",
   },
 };
 
@@ -23,7 +23,7 @@ export default function StatusBadge({ status, className = "" }) {
     STATUS_META[status] ?? {
       label: status,
       icon: null,
-      classes: "border-slate-200 bg-slate-50 text-slate-600",
+      classes: "border-border bg-white/5 text-text-secondary",
     };
   const Icon = meta.icon;
   return (

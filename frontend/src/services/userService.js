@@ -1,8 +1,7 @@
-import { mockUser } from "../data/mockData";
-import { delay } from "../lib/async";
+import { getSession } from "./authService";
 
-// Phase 1: returns mock data. Later replaced by calls to the FastAPI backend.
-export async function getCurrentUser() {
-  await delay(150);
-  return mockUser;
+// Current user is resolved from the authenticated session (mock today, real
+// backend session later). Returns null when there is no active session.
+export function getCurrentUser() {
+  return getSession()?.user ?? null;
 }

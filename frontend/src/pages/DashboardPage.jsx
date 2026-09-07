@@ -6,9 +6,11 @@ import SecurityStatusCard from "../components/SecurityStatusCard";
 import DocumentCard from "../components/DocumentCard";
 import EmptyState from "../components/EmptyState";
 import { useDocuments } from "../hooks/useDocuments";
+import { useAuth } from "../context/useAuth";
 
 export default function DashboardPage() {
   const { documents, loading } = useDocuments();
+  const { user } = useAuth();
   const [showNotice, setShowNotice] = useState(false);
   const recent = documents.slice(0, 4);
 
@@ -20,7 +22,7 @@ export default function DashboardPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Dashboard"
+        eyebrow={`Welcome back, ${user?.username ?? "there"}`}
         title="SecureDoc"
         description="Protect sensitive fields without locking the entire document."
         actions={
@@ -34,7 +36,7 @@ export default function DashboardPage() {
       {showNotice ? (
         <div
           role="status"
-          className="mt-5 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+          className="mt-5 flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-300"
         >
           <Info size={15} aria-hidden="true" />
           Document creation is not part of this preview yet.
@@ -47,12 +49,12 @@ export default function DashboardPage() {
 
       <section className="mt-8" aria-labelledby="recent-documents-heading">
         <div className="flex items-center justify-between gap-3">
-          <h2 id="recent-documents-heading" className="text-base font-semibold text-slate-900">
+          <h2 id="recent-documents-heading" className="text-lg font-semibold text-text-primary">
             Recent documents
           </h2>
           <Link
             to="/documents"
-            className="inline-flex items-center gap-1 text-sm font-medium text-blue-700 hover:text-blue-800"
+            className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:text-accent"
           >
             View all
             <ArrowRight size={15} aria-hidden="true" />
@@ -61,7 +63,7 @@ export default function DashboardPage() {
 
         <div className="mt-4 space-y-3">
           {loading ? (
-            <p className="text-sm text-slate-500">Loading documents…</p>
+            <p className="text-sm text-text-secondary">Loading documents…</p>
           ) : recent.length > 0 ? (
             recent.map((document) => (
               <DocumentCard key={document.id} document={document} />

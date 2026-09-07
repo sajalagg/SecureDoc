@@ -32,7 +32,7 @@ export default function DocumentsPage() {
       {showNotice ? (
         <div
           role="status"
-          className="mt-5 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800"
+          className="mt-5 flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-300"
         >
           <Info size={15} aria-hidden="true" />
           Document creation is not part of this preview yet.
@@ -41,10 +41,10 @@ export default function DocumentsPage() {
 
       <div className="mt-6">
         {loading ? (
-          <p className="text-sm text-slate-500">Loading documents…</p>
+          <p className="text-sm text-text-secondary">Loading documents…</p>
         ) : documents.length > 0 ? (
           <div className="space-y-3">
-            <p className="text-sm text-slate-500">{pluralize(documents.length, "document")}</p>
+            <p className="text-sm text-text-secondary">{pluralize(documents.length, "document")}</p>
             {documents.map((document) => (
               <DocumentCard key={document.id} document={document} showPreview />
             ))}

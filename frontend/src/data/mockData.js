@@ -9,14 +9,19 @@
 // only with typed masks such as [REDACTED:PASSWORD] or placeholders such as
 // [SECUREDOC:<fragment-id>].
 
+// Demo accounts for the mock authentication layer. Credentials live in
+// src/services/authService.js and are demo-only values.
 export const mockUsers = [
   { id: 1, username: "maria.santos", role: "ADMIN" },
   { id: 2, username: "david.oyama", role: "USER" },
   { id: 3, username: "priya.sharma", role: "USER" },
   { id: 4, username: "jonah.weber", role: "USER" },
+  { id: 5, username: "alex.chen", role: "USER" },
 ];
 
-export const mockUser = mockUsers[0];
+// Default demo identity for the mock data layer; the authenticated user is
+// resolved through the session in src/services/authService.js.
+export const mockUser = mockUsers[4];
 
 export const mockDocuments = [
   {

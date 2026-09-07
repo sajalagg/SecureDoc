@@ -11,10 +11,12 @@ const NAV_ITEMS = [
 export function Brand() {
   return (
     <Link to="/" className="flex items-center gap-2.5" aria-label="SecureDoc home">
-      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-700 text-white">
+      <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-on-primary">
         <ShieldCheck size={18} aria-hidden="true" />
       </span>
-      <span className="text-base font-semibold tracking-tight text-slate-900">SecureDoc</span>
+      <span className="text-base font-semibold tracking-tight text-text-primary">
+        SecureDoc
+      </span>
     </Link>
   );
 }
@@ -22,13 +24,13 @@ export function Brand() {
 export default function Sidebar({ user, onNavigate }) {
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200 px-5">
+      <div className="flex h-16 shrink-0 items-center justify-between border-b border-border px-5">
         <Brand />
         <button
           type="button"
           onClick={onNavigate}
           aria-label="Close navigation"
-          className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 lg:hidden"
+          className="rounded-lg p-1.5 text-text-secondary hover:bg-white/5 hover:text-text-primary lg:hidden"
         >
           <X size={18} aria-hidden="true" />
         </button>
@@ -42,10 +44,10 @@ export default function Sidebar({ user, onNavigate }) {
             end={end}
             onClick={onNavigate}
             className={({ isActive }) =>
-              `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              `flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors ${
                 isActive
-                  ? "bg-blue-50 text-blue-700"
-                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                  ? "bg-primary/10 text-primary"
+                  : "text-text-secondary hover:bg-white/5 hover:text-text-primary"
               }`
             }
           >
@@ -55,7 +57,7 @@ export default function Sidebar({ user, onNavigate }) {
         ))}
       </nav>
 
-      <div className="shrink-0 border-t border-slate-200 px-3 py-4">
+      <div className="shrink-0 border-t border-border px-3 py-4">
         <UserProfile user={user} />
       </div>
     </div>

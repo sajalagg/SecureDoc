@@ -65,12 +65,12 @@ const AUDIT_EVENTS = [
 
 function AccessCell({ allowed }) {
   return allowed ? (
-    <span className="inline-flex items-center gap-1.5 text-sm text-emerald-700">
+    <span className="inline-flex items-center gap-1.5 text-sm text-emerald-400">
       <Check size={15} aria-hidden="true" />
       Yes
     </span>
   ) : (
-    <span className="inline-flex items-center gap-1.5 text-sm text-slate-400">
+    <span className="inline-flex items-center gap-1.5 text-sm text-text-secondary/60">
       <X size={15} aria-hidden="true" />
       No
     </span>
@@ -89,8 +89,8 @@ export default function SecurityPage() {
       <div className="mt-8 space-y-6">
         <section className="card p-5 sm:p-6" aria-labelledby="protection-model-heading">
           <div className="flex items-center gap-2.5">
-            <ShieldCheck size={18} className="text-blue-700" aria-hidden="true" />
-            <h2 id="protection-model-heading" className="text-base font-semibold text-slate-900">
+            <ShieldCheck size={18} className="text-primary" aria-hidden="true" />
+            <h2 id="protection-model-heading" className="text-lg font-semibold text-text-primary">
               Protection model
             </h2>
           </div>
@@ -102,14 +102,14 @@ export default function SecurityPage() {
             {PROTECTION_FEATURES.map(({ icon: Icon, title, detail }) => (
               <div
                 key={title}
-                className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/60 p-4"
+                className="flex items-start gap-3 rounded-xl border border-border bg-white/[0.02] p-4"
               >
-                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-white text-blue-700 shadow-sm">
+                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface text-primary">
                   <Icon size={17} aria-hidden="true" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
-                  <p className="mt-1 text-sm leading-6 text-slate-600">{detail}</p>
+                  <h3 className="text-sm font-semibold text-text-primary">{title}</h3>
+                  <p className="mt-1 text-sm leading-6 text-text-secondary">{detail}</p>
                 </div>
               </div>
             ))}
@@ -118,8 +118,8 @@ export default function SecurityPage() {
 
         <section className="card p-5 sm:p-6" aria-labelledby="detection-heading">
           <div className="flex items-center gap-2.5">
-            <FileSearch size={18} className="text-blue-700" aria-hidden="true" />
-            <h2 id="detection-heading" className="text-base font-semibold text-slate-900">
+            <FileSearch size={18} className="text-primary" aria-hidden="true" />
+            <h2 id="detection-heading" className="text-lg font-semibold text-text-primary">
               Detected sensitive fields
             </h2>
           </div>
@@ -131,16 +131,16 @@ export default function SecurityPage() {
             {SENSITIVE_TYPES.map(({ label, mask }) => (
               <li
                 key={label}
-                className="flex items-center justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50/60 px-4 py-3"
+                className="flex items-center justify-between gap-3 rounded-xl border border-border bg-white/[0.02] px-4 py-3"
               >
-                <span className="text-sm font-medium text-slate-700">{label}</span>
-                <code className="rounded-md bg-slate-900 px-2 py-1 font-mono text-xs text-slate-100">
+                <span className="text-sm font-medium text-zinc-200">{label}</span>
+                <code className="rounded-lg bg-background px-2 py-1 font-mono text-xs text-primary">
                   {mask}
                 </code>
               </li>
             ))}
           </ul>
-          <p className="mt-4 border-t border-slate-100 pt-3 text-xs leading-5 text-slate-500">
+          <p className="mt-4 border-t border-border pt-3 text-xs leading-5 text-text-secondary">
             In stored documents, each value is replaced by a placeholder such as
             [SECUREDOC:&lt;fragment-id&gt;] and encrypted separately.
           </p>
@@ -148,8 +148,8 @@ export default function SecurityPage() {
 
         <section className="card p-5 sm:p-6" aria-labelledby="access-heading">
           <div className="flex items-center gap-2.5">
-            <Users size={18} className="text-blue-700" aria-hidden="true" />
-            <h2 id="access-heading" className="text-base font-semibold text-slate-900">
+            <Users size={18} className="text-primary" aria-hidden="true" />
+            <h2 id="access-heading" className="text-lg font-semibold text-text-primary">
               Role-based access
             </h2>
           </div>
@@ -159,7 +159,7 @@ export default function SecurityPage() {
                 Capabilities available to USER and ADMIN roles.
               </caption>
               <thead>
-                <tr className="border-b border-slate-200 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                <tr className="border-b border-border text-xs font-semibold uppercase tracking-wide text-text-secondary">
                   <th scope="col" className="py-2 pr-4">
                     Capability
                   </th>
@@ -173,11 +173,8 @@ export default function SecurityPage() {
               </thead>
               <tbody>
                 {ACCESS_ROWS.map(({ capability, user, admin }) => (
-                  <tr
-                    key={capability}
-                    className="border-b border-slate-100 last:border-b-0"
-                  >
-                    <td className="py-3 pr-4 text-sm text-slate-700">{capability}</td>
+                  <tr key={capability} className="border-b border-border/60 last:border-b-0">
+                    <td className="py-3 pr-4 text-sm text-zinc-200">{capability}</td>
                     <td className="py-3 pr-4">
                       <AccessCell allowed={user} />
                     </td>
@@ -193,8 +190,8 @@ export default function SecurityPage() {
 
         <section className="card p-5 sm:p-6" aria-labelledby="audit-heading">
           <div className="flex items-center gap-2.5">
-            <ShieldCheck size={18} className="text-blue-700" aria-hidden="true" />
-            <h2 id="audit-heading" className="text-base font-semibold text-slate-900">
+            <ShieldCheck size={18} className="text-primary" aria-hidden="true" />
+            <h2 id="audit-heading" className="text-lg font-semibold text-text-primary">
               Audit logging
             </h2>
           </div>
@@ -206,7 +203,7 @@ export default function SecurityPage() {
             {AUDIT_EVENTS.map((event) => (
               <li
                 key={event}
-                className="badge border-slate-200 bg-slate-100 font-mono text-slate-600"
+                className="badge border-border bg-white/5 font-mono text-text-secondary"
               >
                 {event}
               </li>

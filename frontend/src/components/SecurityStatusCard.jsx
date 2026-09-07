@@ -42,26 +42,26 @@ export default function SecurityStatusCard() {
   if (!status) {
     return (
       <section className="card flex items-center justify-center p-8" aria-busy="true">
-        <p className="text-sm text-slate-500">Loading security status…</p>
+        <p className="text-sm text-text-secondary">Loading security status…</p>
       </section>
     );
   }
 
   return (
-    <section className="card p-5" aria-labelledby="security-status-heading">
+    <section className="card p-5 sm:p-6" aria-labelledby="security-status-heading">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
             <ShieldCheck size={20} aria-hidden="true" />
           </div>
           <div>
-            <h2 id="security-status-heading" className="text-sm font-semibold text-slate-900">
+            <h2 id="security-status-heading" className="text-sm font-semibold text-text-primary">
               Security status
             </h2>
-            <p className="text-sm text-slate-500">Protection active across your workspace</p>
+            <p className="text-sm text-text-secondary">Protection active across your workspace</p>
           </div>
         </div>
-        <span className="badge border-emerald-200 bg-emerald-50 text-emerald-700">
+        <span className="badge border-emerald-500/40 bg-emerald-500/10 text-emerald-400">
           <ShieldCheck size={13} aria-hidden="true" />
           Protection active
         </span>
@@ -71,20 +71,20 @@ export default function SecurityStatusCard() {
         {FEATURES.map(({ icon: Icon, title, detail }) => (
           <div
             key={title}
-            className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50/60 p-3"
+            className="flex items-start gap-3 rounded-xl border border-border bg-white/[0.02] p-3"
           >
-            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white text-slate-500 shadow-sm">
+            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface text-primary">
               <Icon size={16} aria-hidden="true" />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-medium text-slate-900">{title}</p>
-              <p className="text-xs leading-5 text-slate-500">{detail}</p>
+              <p className="text-sm font-medium text-text-primary">{title}</p>
+              <p className="text-xs leading-5 text-text-secondary">{detail}</p>
             </div>
           </div>
         ))}
       </div>
 
-      <p className="mt-4 border-t border-slate-100 pt-3 text-xs text-slate-500">
+      <p className="mt-4 border-t border-border pt-3 text-xs text-text-secondary">
         {pluralize(status.summary.protected, "document")} protected of {status.summary.total} ·{" "}
         {pluralize(status.summary.fragments, "fragment")} encrypted
       </p>
