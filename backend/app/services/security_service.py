@@ -2,7 +2,7 @@
 
 from app.audit.logger import AuditAction
 from app.auth.auth import AuthorizationError, Role, User, hash_password, require_admin, verify_password
-from app.services.document_service import decrypt_document_with_master_key, protect_document_with_master_key
+from app.services.document_service import decrypt_document_with_master_key, protect_document_with_master_key, redact_document
 from app.storage.repository import SQLiteRepository
 
 
@@ -43,7 +43,11 @@ def decrypt_document_as_admin(repository: SQLiteRepository, user: User, document
         repository.log_event(AuditAction.DOCUMENT_ACCESSED, "NOT_FOUND", user.user_id, document_id)
         raise KeyError("Document was not found.")
     repository.log_event(AuditAction.DOCUMENT_ACCESSED, "SUCCESS", user.user_id, document_id)
-    plaintext = decrypt_document_with_master_key(stored.document)
+    try:
+        plaintext = decrypt_document_with_master_key(stored.document)
+    except Exception:
+        repository.log_event(AuditAction.DOCUMENT_DECRYPTED, "FAILED", user.user_id, document_id)
+        raise
     repository.log_event(AuditAction.DOCUMENT_DECRYPTED, "SUCCESS", user.user_id, document_id)
     return plaintext
 
@@ -60,6 +64,12 @@ def get_document_for_user(repository: SQLiteRepository, user: User, document_id:
     return stored.document
 
 
+def get_masked_document_for_user(repository: SQLiteRepository, user: User, document_id: str) -> str:
+    """Return document text with all sensitive values safely masked/redacted."""
+    document = get_document_for_user(repository, user, document_id)
+    return redact_document(document)
+
+
 def list_documents_for_user(repository: SQLiteRepository, user: User):
     """List protected documents visible to a user without decrypting any content."""
     documents = repository.list_documents(None if user.role is Role.ADMIN else user.user_id)
@@ -73,4 +83,5 @@ def get_audit_for_document_as_admin(repository: SQLiteRepository, user: User, do
     except AuthorizationError:
         repository.log_event(AuditAction.ACCESS_DENIED, "DENIED", user.user_id, document_id)
         raise
+    repository.log_event(AuditAction.DOCUMENT_ACCESSED, "AUDIT_ACCESSED", user.user_id, document_id)
     return repository.get_audit_records(document_id)

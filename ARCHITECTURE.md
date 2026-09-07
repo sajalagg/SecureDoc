@@ -44,30 +44,28 @@ key-management service.
 
 ## Authentication, authorization, and storage
 
-SQLite is the local prototype database. It has separate `users`, `documents`, and
+SQLite is the cross-platform database. It has separate `users`, `documents`, and
 `audit_logs` tables. Documents store protected text, encrypted-fragment metadata,
 and the encrypted document-key envelope; they never store the original document,
 the plaintext document key, or the master key.
 
 Passwords are salted and derived using `cryptography`'s Scrypt implementation.
 SecureDoc stores the derived value and its parameters, never the password itself.
-This avoids relying on optional password-hashing features in a particular Python
-build.
 
-The current policy is intentionally small: both authenticated roles may create a
-protected document, but only `ADMIN` may decrypt it. `USER` decryption attempts
-are denied and recorded. Audit records contain timestamp, user ID, document ID,
-action, and result; they must never contain plaintext, passwords, API keys, card
-numbers, or keys.
+The RBAC and disclosure policy enforces least-privilege access:
+- **`USER` role:** Can create documents, view their own documents, and list documents. When viewing document content, sensitive placeholders are safely replaced with typed masks (e.g. `[REDACTED:PASSWORD]`, `[REDACTED:API_KEY]`) via `app.documents.reconstruction.redact_text` / `app.services.document_service.redact_document`. Non-admin users cannot access other users' documents.
+- **`ADMIN` role:** Can view all documents, inspect the full encrypted metadata, decrypt/reconstruct original plaintext via `decrypt_document_as_admin`, and inspect audit trails via `get_audit_for_document_as_admin`.
+- **Unauthorized decryption:** Attempts by non-administrators are denied with `AuthorizationError` (HTTP 403) and audited as `ACCESS_DENIED`.
+- **Audit trail:** All critical lifecycle events are audited (`REGISTER_SUCCESS`, `LOGIN_SUCCESS`, `LOGIN_FAILURE`, `DOCUMENT_CREATED`, `DOCUMENT_ACCESSED`, `DOCUMENT_DECRYPTED`, `ACCESS_DENIED`). Records store timestamps, user IDs, document IDs, actions, and outcomes only; plaintext, secrets, passwords, and keys are strictly excluded.
 
 `app.services.security_service` provides the application-level functions:
 
 - `register_user(...)` and `authenticate_user(...)`
 - `create_document(...)`
 - `decrypt_document_as_admin(...)`
-
-FastAPI will call these services in the next milestone rather than duplicating
-their encryption, authorization, or persistence logic.
+- `get_document_for_user(...)` and `get_masked_document_for_user(...)`
+- `list_documents_for_user(...)`
+- `get_audit_for_document_as_admin(...)`
 
 ## API layer
 
@@ -81,17 +79,24 @@ Public registration creates only `USER` accounts. The first `ADMIN` is created b
 the local `python -m app.bootstrap_admin` command, preventing an attacker from
 making themselves an administrator through a public endpoint.
 
-## TXT document adapter
+## Document adapters (TXT, DOCX, PDF)
 
-`app.documents.adapters.TextDocumentAdapter` is the boundary between uploaded
-files and the text-only core. It accepts only `.txt` filenames, limits uploads to
-1 MB, requires UTF-8, and preserves the decoded text exactly. The adapter passes
-normalized text to the same detection/encryption pipeline used by JSON requests.
+`app.documents.adapters` provides pluggable boundaries between incoming file
+formats and SecureDoc's normalized plain text engine:
 
-`POST /documents/upload` accepts multipart form data with a required `file` and
-an optional `document_id`. Its response records the source filename in encrypted
-document metadata. Future DOCX/PDF adapters should expose the same `read`/`write`
-contract, leaving detection, encryption, key management, RBAC, and storage intact.
+```text
+Upload (.txt, .docx, .pdf) → Adapter.read() → Extracted normalized text → SecureDoc Engine
+```
+
+The cryptographic core, detector, RBAC, and storage remain entirely unaware of the
+file format.
+
+- **`TextDocumentAdapter` (.txt):** Requires valid UTF-8 encoding; 1 MB upload limit.
+- **`DocxDocumentAdapter` (.docx):** Extracts text across paragraphs and tables using `python-docx`; 10 MB limit. Corrupted packages and empty files are rejected with `DocumentFormatError`.
+- **`PdfDocumentAdapter` (.pdf):** Extracts page text using `pypdf`; 10 MB limit. Rejects encrypted/password-protected PDFs safely.
+  *Limitation:* Scanned or image-only PDFs do not have an embedded text layer and require OCR preprocessing prior to ingestion.
+- **Unified Dispatcher:** `read_document_file(filename, content)` automatically routes to the appropriate adapter based on extension or rejects unsupported file extensions with a descriptive error.
+- **API integration:** `POST /documents/upload` accepts `.txt`, `.docx`, and `.pdf` files, storing the source filename in metadata.
 
 ## Why placeholders instead of replacement offsets
 
@@ -101,11 +106,19 @@ longer point to the same characters afterwards. Reconstruction therefore locates
 unique placeholders; original offsets stay in metadata for traceability and
 validation.
 
+## Detection design & heuristics
+
+The detector employs transparent, deterministic rules without black-box models:
+- **Explicit password fields & credential pairs (0.99):** Labeled password fields (including `password`, `passwd`, `pwd`, `client_secret`, `db_password`, supporting quoted/unquoted values and punctuation stripping) and correlated username/password pairs.
+- **Payment cards (0.98):** Candidate digit sequences (13–19 digits, formatted or raw) validated using the Luhn checksum algorithm, with false-positive filtering for zero-prefixed, repetitive, or date strings.
+- **Explicit API key fields (0.95):** Labeled API key, token, or secret assignments.
+- **Bearer tokens (0.92):** Authorization bearer token patterns.
+- **Structured prefix tokens (0.90):** High-specificity token prefixes (Stripe `sk_live_`/`sk_test_`, GitHub `ghp_`/`gho_` etc., GitLab `glpat-`, AWS Access Key IDs `AKIA`, and Slack `xoxb-`).
+- **Email syntax (0.85):** RFC-compliant email matching requiring valid TLD domains and boundary protections.
+
+Span overlap resolution (`_remove_overlaps`) deterministically prefers the longest span, breaking ties by confidence score, rule name, and position.
+
 ## Important limitations
 
-- Regex is intentionally conservative and cannot identify every password or API
-  key. Confidence scores are rules-based heuristics, not probabilities.
-- Email addresses are in scope because requested, though some deployments may
-  classify them as personal rather than secret data.
-- A caller must enforce authentication and authorization before it calls
-  `decrypt_document`. RBAC and audit logging are later milestones.
+- Regex is intentionally conservative and cannot identify arbitrary unlabelled secrets without structure. Confidence scores are rules-based heuristics, not calibrated probabilities.
+- Email addresses are in scope as sensitive data per specification.
