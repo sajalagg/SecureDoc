@@ -11,14 +11,29 @@ from pydantic import BaseModel, Field
 
 from app.auth.auth import AuthorizationError, Role, User
 from app.auth.tokens import TokenError, create_access_token, read_access_token
-from app.documents.adapters import DocumentFormatError, TextDocumentAdapter
-from app.services.document_service import scan_document
+from app.documents.adapters import DocumentFormatError, TextDocumentAdapter, read_document_file
+from app.services.document_service import redact_document, scan_document
 from app.services.security_service import (
     authenticate_user, create_document, decrypt_document_as_admin,
-    get_audit_for_document_as_admin, get_document_for_user, list_documents_for_user,
-    register_user,
+    get_audit_for_document_as_admin, get_document_for_user, get_masked_document_for_user,
+    list_documents_for_user, register_user,
 )
 from app.storage.repository import SQLiteRepository
+
+
+def _load_env_if_present() -> None:
+    """Load default configuration from .env if present in root or parent directories."""
+    for candidate in (Path(".env"), Path(__file__).resolve().parent.parent.parent.parent / ".env"):
+        if candidate.is_file():
+            for line in candidate.read_text(encoding="utf-8").splitlines():
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, val = line.split("=", 1)
+                    os.environ.setdefault(key.strip(), val.strip())
+            break
+
+
+_load_env_if_present()
 
 
 class RegisterRequest(BaseModel):
@@ -52,9 +67,16 @@ class ScanRequest(BaseModel):
     text: str = Field(min_length=1)
 
 
-def _document_response(document) -> Dict[str, Any]:
-    """Return protected data and metadata; plaintext is never present here."""
-    return {"document_id": document.document_id, "protected_text": document.protected_text, "metadata": document.metadata()}
+def _document_response(document, user: Optional[User] = None) -> Dict[str, Any]:
+    """Return protected data and metadata; masked text is provided for safe USER reading."""
+    masked = redact_document(document)
+    return {
+        "document_id": document.document_id,
+        "protected_text": document.protected_text,
+        "masked_text": masked,
+        "text": masked if (user and user.role == Role.USER) else document.protected_text,
+        "metadata": document.metadata(),
+    }
 
 
 def create_app(database_path: Optional[Path] = None) -> FastAPI:
@@ -116,28 +138,38 @@ def create_app(database_path: Optional[Path] = None) -> FastAPI:
         document_id: Optional[str] = Form(default=None),
         user: User = Depends(current_user),
     ):
-        """Validate a UTF-8 TXT upload, selectively protect it, and store its source filename."""
+        """Validate an uploaded document (.txt, .docx, .pdf), selectively protect it, and store."""
         filename = file.filename or "uploaded.txt"
         try:
-            text = TextDocumentAdapter.read(filename, await file.read())
+            text = read_document_file(filename, await file.read())
         except DocumentFormatError as error:
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(error))
+            raise HTTPException(status_code=422, detail=str(error))
         try:
             document = create_document(repository, user, document_id or str(uuid4()), text, filename)
         except ValueError as error:
             raise HTTPException(status.HTTP_409_CONFLICT, str(error))
-        return _document_response(document)
+        return _document_response(document, user)
 
     @app.get("/documents")
     def list_documents(user: User = Depends(current_user)):
         """List documents visible to the current user without decrypting them."""
-        return [_document_response(document) for document in list_documents_for_user(repository, user)]
+        return [_document_response(document, user) for document in list_documents_for_user(repository, user)]
 
     @app.get("/documents/{document_id}")
     def get_document(document_id: str, user: User = Depends(current_user)):
-        """Retrieve protected text/metadata when the caller is authorized to view it."""
+        """Retrieve document metadata and masked/protected text for authorized callers."""
         try:
-            return _document_response(get_document_for_user(repository, user, document_id))
+            return _document_response(get_document_for_user(repository, user, document_id), user)
+        except KeyError:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Document was not found.")
+        except AuthorizationError as error:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, str(error))
+
+    @app.get("/documents/{document_id}/redacted")
+    def get_redacted(document_id: str, user: User = Depends(current_user)):
+        """Retrieve document text with sensitive values masked/redacted for USER viewing."""
+        try:
+            return {"document_id": document_id, "text": get_masked_document_for_user(repository, user, document_id)}
         except KeyError:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Document was not found.")
         except AuthorizationError as error:

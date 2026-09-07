@@ -36,3 +36,15 @@ def reconstruct_text(protected_document: ProtectedDocument, key: bytes) -> str:
         reconstructed = reconstructed.replace(fragment.placeholder, plaintext, 1)
     return reconstructed
 
+
+def redact_text(protected_document: ProtectedDocument, mask_format: str = "[REDACTED:{type}]") -> str:
+    """Replace each protected placeholder with a safe masked/redacted label.
+
+    Does not decrypt or require any encryption keys. Safe to expose to USER role.
+    """
+    redacted = protected_document.protected_text
+    for fragment in protected_document.encrypted_fragments:
+        replacement = mask_format.format(type=fragment.sensitive_type.value)
+        redacted = redacted.replace(fragment.placeholder, replacement)
+    return redacted
+

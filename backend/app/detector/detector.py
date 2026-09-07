@@ -16,6 +16,12 @@ def is_luhn_valid(candidate: str) -> bool:
     digits = "".join(character for character in candidate if character.isdigit())
     if not 13 <= len(digits) <= 19:
         return False
+    # Reject dummy repetitive sequences (e.g. 0000 0000 0000 0000 or 1111 1111 1111 1111)
+    if len(set(digits)) <= 1:
+        return False
+    # Payment card BIN/IIN numbers do not start with 0
+    if digits[0] == "0":
+        return False
     total = 0
     for index, digit in enumerate(reversed(digits)):
         number = int(digit)
@@ -28,10 +34,19 @@ def is_luhn_valid(candidate: str) -> bool:
 
 
 def _field_detections(text: str, expression, sensitive_type: SensitiveType, confidence: float, rule_name: str) -> Iterable[Detection]:
-    """Yield value-only detections from a labelled regex with a ``value`` group."""
+    """Yield value-only detections from a labelled regex with value groups."""
     for match in expression.finditer(text):
-        start, end = match.span("value")
-        yield Detection(sensitive_type, start, end, match.group("value"), confidence, rule_name)
+        for group_name in ("qvalue", "sqvalue", "value"):
+            if group_name in match.groupdict() and match.group(group_name) is not None:
+                start, end = match.span(group_name)
+                val = match.group(group_name)
+                if group_name == "value" and val:
+                    stripped = val.rstrip(".")
+                    if stripped:
+                        end = start + len(stripped)
+                        val = stripped
+                yield Detection(sensitive_type, start, end, val, confidence, rule_name)
+                break
 
 
 def _remove_overlaps(detections: Iterable[Detection]) -> List[Detection]:
@@ -54,17 +69,42 @@ def detect_sensitive_data(text: str) -> List[Detection]:
     """Find supported sensitive values and return exact, non-overlapping spans.
 
     The detector uses intentionally transparent rules.  Its scores are
-    heuristics: 0.99 for an explicit password field, 0.98 for a valid Luhn card,
-    0.95 for labelled API keys, 0.90 for structured API keys, and 0.85 for a
-    syntactically valid email address.
+    heuristics: 0.99 for an explicit password field or credential pair,
+    0.98 for a valid Luhn card, 0.95 for labelled API keys, 0.92 for Bearer tokens,
+    0.90 for structured prefix API keys, and 0.85 for a syntactically valid email address.
     """
     candidates: List[Detection] = list(
         _field_detections(text, patterns.PASSWORD_FIELD, SensitiveType.PASSWORD, 0.99, "explicit_password_field")
     )
-    candidates.extend(_field_detections(text, patterns.API_KEY_FIELD, SensitiveType.API_KEY, 0.95, "explicit_api_key_field"))
+    candidates.extend(
+        _field_detections(text, patterns.CREDENTIAL_PAIR, SensitiveType.PASSWORD, 0.99, "credential_pair_password")
+    )
+    candidates.extend(
+        _field_detections(text, patterns.API_KEY_FIELD, SensitiveType.API_KEY, 0.95, "explicit_api_key_field")
+    )
+    candidates.extend(
+        Detection(SensitiveType.API_KEY, match.start("value"), match.end("value"), match.group("value"), 0.92, "bearer_token")
+        for match in patterns.BEARER_TOKEN.finditer(text)
+    )
     candidates.extend(
         Detection(SensitiveType.API_KEY, match.start(), match.end(), match.group(), 0.90, "structured_sk_key")
         for match in patterns.STRUCTURED_API_KEY.finditer(text)
+    )
+    candidates.extend(
+        Detection(SensitiveType.API_KEY, match.start(), match.end(), match.group(), 0.90, "structured_github_token")
+        for match in patterns.STRUCTURED_GITHUB_TOKEN.finditer(text)
+    )
+    candidates.extend(
+        Detection(SensitiveType.API_KEY, match.start(), match.end(), match.group(), 0.90, "structured_gitlab_token")
+        for match in patterns.STRUCTURED_GITLAB_TOKEN.finditer(text)
+    )
+    candidates.extend(
+        Detection(SensitiveType.API_KEY, match.start(), match.end(), match.group(), 0.90, "structured_aws_key")
+        for match in patterns.STRUCTURED_AWS_KEY.finditer(text)
+    )
+    candidates.extend(
+        Detection(SensitiveType.API_KEY, match.start(), match.end(), match.group(), 0.90, "structured_slack_token")
+        for match in patterns.STRUCTURED_SLACK_TOKEN.finditer(text)
     )
     candidates.extend(
         Detection(SensitiveType.EMAIL, match.start(), match.end(), match.group(), 0.85, "email_syntax")

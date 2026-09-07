@@ -5,7 +5,7 @@ from dataclasses import replace
 from app.detector.detector import detect_sensitive_data
 from app.documents.models import ProtectedDocument
 from app.documents.protector import protect_text
-from app.documents.reconstruction import reconstruct_text
+from app.documents.reconstruction import reconstruct_text, redact_text
 from app.encryption.key_manager import generate_document_key, load_master_key, unwrap_document_key, wrap_document_key
 
 
@@ -26,6 +26,11 @@ def protect_document(text: str, document_id: str, key: bytes) -> ProtectedDocume
 def decrypt_document(protected_document: ProtectedDocument, key: bytes) -> str:
     """Reconstruct a protected document after AES-GCM verification succeeds."""
     return reconstruct_text(protected_document, key)
+
+
+def redact_document(protected_document: ProtectedDocument, mask_format: str = "[REDACTED:{type}]") -> str:
+    """Return protected document text with all sensitive placeholders safely masked."""
+    return redact_text(protected_document, mask_format)
 
 
 def protect_document_with_master_key(text: str, document_id: str, source_filename: str = None) -> ProtectedDocument:
