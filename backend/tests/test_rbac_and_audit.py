@@ -186,3 +186,21 @@ def test_api_rbac_endpoints(tmp_path, monkeypatch):
     admin_audit = client.get("/documents/api-rbac-doc/audit", headers=admin_headers)
     assert admin_audit.status_code == 200
     assert len(admin_audit.json()["records"]) >= 3
+
+    # User cannot delete document
+    user_del = client.delete("/documents/api-rbac-doc", headers=user_headers)
+    assert user_del.status_code == 403
+
+    # Admin deletes document
+    admin_del = client.delete("/documents/api-rbac-doc", headers=admin_headers)
+    assert admin_del.status_code == 200
+    assert admin_del.json() == {"document_id": "api-rbac-doc", "deleted": True}
+
+    # Document is now gone
+    assert client.get("/documents/api-rbac-doc", headers=admin_headers).status_code == 404
+
+    # Audit records are preserved and record DOCUMENT_DELETED
+    post_delete_audit = client.get("/documents/api-rbac-doc/audit", headers=admin_headers)
+    assert post_delete_audit.status_code == 200
+    actions = [r["action"] for r in post_delete_audit.json()["records"]]
+    assert "DOCUMENT_DELETED" in actions

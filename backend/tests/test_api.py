@@ -15,7 +15,12 @@ def test_api_registration_scan_protection_and_admin_only_decryption(tmp_path, mo
     client = TestClient(application)
     registration = client.post("/auth/register", json={"username": "student", "password": "StudentPass123"})
     assert registration.status_code == 201
+    assert registration.json()["user"]["username"] == "student"
+    assert registration.json()["user"]["role"] == "USER"
     student_headers = {"Authorization": f"Bearer {registration.json()['access_token']}"}
+    me_resp = client.get("/auth/me", headers=student_headers)
+    assert me_resp.status_code == 200
+    assert me_resp.json() == {"id": registration.json()["user"]["id"], "username": "student", "role": "USER"}
     scan = client.post("/documents/scan", headers=student_headers, json={"text": "Password: MyPassword123"})
     assert scan.status_code == 200
     assert scan.json()["detections"][0]["type"] == "PASSWORD"

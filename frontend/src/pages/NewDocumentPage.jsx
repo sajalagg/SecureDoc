@@ -5,10 +5,10 @@ import PageHeader from "../components/PageHeader";
 import ErrorAlert from "../components/ErrorAlert";
 import { createDocument } from "../services/documentService";
 
-const DEMO_TEXT = `Server: demo-01
-Database Password: DEMO_ONLY_PASSWORD
-API Key: DEMO_ONLY_API_KEY
-Contact: demo@example.invalid`;
+const DEMO_TEXT = `Database Host: db.internal.net:5432
+Database Password: SuperSecretDatabasePass123!
+API Key: ak_live_51M0abcdefghijklmnopqrstuvwxyz
+Admin Contact: devops@securedoc.internal`;
 
 export default function NewDocumentPage() {
   const navigate = useNavigate();
@@ -44,7 +44,7 @@ export default function NewDocumentPage() {
       <PageHeader
         eyebrow="Create"
         title="New document"
-        description="Protect a document from pasted text. Detection is simulated with demo markers — no real encryption happens in this preview."
+        description="Protect sensitive fields with AES-256-GCM envelope encryption. Non-sensitive text remains readable."
       />
 
       <div className="mt-6">

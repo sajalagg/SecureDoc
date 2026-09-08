@@ -1,19 +1,24 @@
-import { mockDocuments, mockSecurityStatus } from "../data/mockData";
-import { delay } from "../lib/async";
+import { getDocuments } from "./documentService";
 
-// Phase 1: returns mock data derived from the mock document set.
 export async function getSecurityStatus() {
-  await delay(200);
-  const total = mockDocuments.length;
-  const protectedCount = mockDocuments.filter(
-    (document) => document.status === "protected",
-  ).length;
-  const fragments = mockDocuments.reduce(
-    (sum, document) => sum + document.sensitiveFieldCount,
-    0,
-  );
-  return {
-    ...mockSecurityStatus,
-    summary: { total, protected: protectedCount, fragments },
-  };
+  try {
+    const docs = await getDocuments();
+    const total = docs.length;
+    const protectedCount = docs.filter(
+      (doc) => doc.sensitiveFieldCount > 0 || doc.status === "protected",
+    ).length;
+    const fragments = docs.reduce(
+      (sum, doc) => sum + (doc.sensitiveFieldCount || 0),
+      0,
+    );
+    return {
+      status: "ACTIVE",
+      summary: { total, protected: protectedCount, fragments },
+    };
+  } catch {
+    return {
+      status: "ACTIVE",
+      summary: { total: 0, protected: 0, fragments: 0 },
+    };
+  }
 }

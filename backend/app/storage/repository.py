@@ -124,6 +124,13 @@ class SQLiteRepository:
             return None
         return StoredDocument(row["owner_user_id"], ProtectedDocument.from_storage(document_id, row["protected_text"], json.loads(row["metadata_json"])))
 
+    def delete_document(self, document_id: str) -> bool:
+        """Delete a document from storage. Returns True if a document was deleted."""
+        with self._lock:
+            cursor = self.connection.execute("DELETE FROM documents WHERE id = ?", (document_id,))
+            self.connection.commit()
+            return cursor.rowcount > 0
+
     def log_event(self, action: AuditAction, result: str, user_id: Optional[int] = None, document_id: Optional[str] = None) -> None:
         """Persist a security event using IDs and outcomes only, never secret values."""
         with self._lock:

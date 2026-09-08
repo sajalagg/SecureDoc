@@ -85,3 +85,18 @@ def get_audit_for_document_as_admin(repository: SQLiteRepository, user: User, do
         raise
     repository.log_event(AuditAction.DOCUMENT_ACCESSED, "AUDIT_ACCESSED", user.user_id, document_id)
     return repository.get_audit_records(document_id)
+
+
+def delete_document_as_admin(repository: SQLiteRepository, user: User, document_id: str) -> None:
+    """Delete a document from storage only if the caller is an ADMIN."""
+    try:
+        require_admin(user)
+    except AuthorizationError:
+        repository.log_event(AuditAction.ACCESS_DENIED, "DENIED", user.user_id, document_id)
+        raise
+    stored = repository.get_document(document_id)
+    if stored is None:
+        raise KeyError("Document was not found.")
+    repository.delete_document(document_id)
+    repository.log_event(AuditAction.DOCUMENT_DELETED, "SUCCESS", user.user_id, document_id)
+

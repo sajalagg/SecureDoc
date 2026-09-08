@@ -60,11 +60,17 @@ export default function LoginPage() {
     setPending(true);
     try {
       await login({ username, password });
-    } catch {
-      setError("Invalid username or password.");
+    } catch (err) {
+      setError(err?.message || "Invalid username or password.");
     } finally {
       setPending(false);
     }
+  };
+
+  const handleSelectAccount = (account) => {
+    setUsername(account.username);
+    setPassword(account.password);
+    setError(null);
   };
 
   return (
@@ -130,7 +136,7 @@ export default function LoginPage() {
                   onChange={(event) => setUsername(event.target.value)}
                   aria-invalid={error ? "true" : undefined}
                   aria-describedby={error ? "login-error" : undefined}
-                  placeholder="e.g. alex.chen"
+                  placeholder="e.g. alice"
                   className="input mt-1.5"
                 />
               </div>
@@ -186,17 +192,22 @@ export default function LoginPage() {
             </form>
 
             <div className="mt-6 rounded-xl border border-dashed border-border bg-background/60 p-4">
-              <p className="tech-label">Demo accounts · preview only</p>
+              <p className="tech-label">Default system accounts (click to fill)</p>
               <ul className="mt-2 space-y-1.5">
                 {DEMO_ACCOUNTS.map((account) => (
-                  <li
-                    key={account.username}
-                    className="font-mono text-xs text-text-secondary"
-                  >
-                    <span className="text-text-primary">{account.username}</span>
-                    {" / "}
-                    {account.password}
-                    <span className="ml-2 text-primary">{account.role}</span>
+                  <li key={account.username}>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectAccount(account)}
+                      className="w-full text-left font-mono text-xs text-text-secondary hover:text-text-primary rounded p-1 hover:bg-white/5 transition flex items-center justify-between"
+                    >
+                      <span>
+                        <span className="text-text-primary font-semibold">{account.username}</span>
+                        {" / "}
+                        <span>{account.password}</span>
+                      </span>
+                      <span className="badge badge-subtle text-primary">{account.role}</span>
+                    </button>
                   </li>
                 ))}
               </ul>
@@ -204,7 +215,7 @@ export default function LoginPage() {
           </div>
 
           <p className="mt-4 text-center text-xs text-text-secondary">
-            Mock session — backend authentication arrives in a later phase.
+            Authenticated via FastAPI with JWT Bearer tokens & AES-256-GCM.
           </p>
         </div>
       </section>

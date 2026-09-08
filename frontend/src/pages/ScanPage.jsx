@@ -73,13 +73,12 @@ export default function ScanPage() {
             id="scan-text"
             value={text}
             onChange={(event) => setText(event.target.value)}
-            placeholder="Paste demo text, e.g. Password: DEMO_ONLY_PASSWORD"
+            placeholder="Paste text to scan, e.g. Server: prod&#10;Password: MySecretPassword123&#10;API Key: ak_live_51M0abc..."
             className="input mt-1.5 min-h-44 resize-y font-mono"
           />
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <p className="text-xs text-text-secondary">
-              Detection is simulated with clearly synthetic demo markers. Values are never
-              displayed separately or stored.
+              Scanned in real-time by backend pattern detectors (API keys, passwords, emails, tokens). Plaintext is never stored.
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -128,7 +127,7 @@ export default function ScanPage() {
           <div className="mt-6">
             <EmptyState
               title="No sensitive fields detected"
-              description="The text contains no recognized demo-sensitive values."
+              description="The text contains no recognized sensitive values."
             />
           </div>
         ) : result ? (
