@@ -131,10 +131,7 @@ SECUREDOC_AUTH_SECRET=Bbx2QefbEHZn1k2-DninIcYjVH1TMR0GnwSiWCfnBZQ
 SECUREDOC_DATABASE_PATH=securedoc.db
 EOF
 
-# 4. Run automated test suite (46 tests)
-pytest
-
-# 5. Start the FastAPI backend server
+# 4. Start the FastAPI backend server
 PYTHONPATH=backend uvicorn app.api.main:app --host 127.0.0.1 --port 8000 --reload
 ```
 The backend will be live at `http://127.0.0.1:8000` with interactive Swagger docs at `http://127.0.0.1:8000/docs`.
