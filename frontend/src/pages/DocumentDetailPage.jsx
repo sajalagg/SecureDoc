@@ -1,13 +1,16 @@
+import { useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import { ArrowLeft, KeyRound, ShieldCheck } from "lucide-react";
+import { ArrowLeft, KeyRound, ScrollText, ShieldCheck } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import StatusBadge from "../components/StatusBadge";
 import DocumentTypeBadge from "../components/DocumentTypeBadge";
 import SensitiveTypeBadge from "../components/SensitiveTypeBadge";
 import ProtectedFragment from "../components/ProtectedFragment";
 import EmptyState from "../components/EmptyState";
+import DecryptConfirmDialog from "../components/DecryptConfirmDialog";
 import { useDocument } from "../hooks/useDocument";
 import { useAuth } from "../context/useAuth";
+import { decryptDocument } from "../services/documentService";
 import { formatDate, pluralize } from "../lib/format";
 import { splitProtectedText } from "../lib/fragmentText";
 
@@ -17,6 +20,10 @@ export default function DocumentDetailPage() {
   const { role } = useAuth();
   const location = useLocation();
   const created = location.state?.created === true;
+  const [decryptOpen, setDecryptOpen] = useState(false);
+  const [decrypting, setDecrypting] = useState(false);
+  const [decryptError, setDecryptError] = useState(null);
+  const [plaintext, setPlaintext] = useState(null);
 
   if (loading) {
     return <p className="text-sm text-text-secondary">Loading document…</p>;
@@ -53,6 +60,21 @@ export default function DocumentDetailPage() {
   const fragments = document.metadata?.encrypted_spans ?? [];
   const version = document.metadata?.version ?? 1;
   const envelope = document.metadata?.key_envelope ?? null;
+
+  const handleConfirmDecrypt = async () => {
+    if (decrypting) return;
+    setDecryptError(null);
+    setDecrypting(true);
+    try {
+      const result = await decryptDocument(document.document_id);
+      setPlaintext(result.text);
+      setDecryptOpen(false);
+    } catch (err) {
+      setDecryptError(err.message);
+    } finally {
+      setDecrypting(false);
+    }
+  };
 
   return (
     <>
@@ -192,6 +214,68 @@ export default function DocumentDetailPage() {
           </p>
         </section>
       ) : null}
+
+      {isAdmin && plaintext ? (
+        <section
+          className="card mt-6 border-emerald-500/30 p-5 sm:p-6"
+          aria-labelledby="decrypted-content-heading"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="decrypted-content-heading" className="text-lg font-semibold text-text-primary">
+              Decrypted content
+            </h2>
+            <span className="badge border-emerald-500/40 bg-emerald-500/10 font-mono text-emerald-400">
+              DECRYPTED IN MEMORY
+            </span>
+          </div>
+          <p className="mt-2 text-sm leading-6 text-text-secondary">
+            Shown in this view only — never persisted to storage and never sent to the URL.
+          </p>
+          <pre className="mt-4 whitespace-pre-wrap rounded-xl border border-border bg-background p-4 font-mono text-[13px] leading-6 text-zinc-200">
+            {plaintext}
+          </pre>
+        </section>
+      ) : null}
+
+      {isAdmin ? (
+        <section className="card mt-6 p-5 sm:p-6" aria-labelledby="admin-actions-heading">
+          <h2 id="admin-actions-heading" className="text-lg font-semibold text-text-primary">
+            Admin actions
+          </h2>
+          <p className="mt-1 text-sm leading-6 text-text-secondary">
+            Admin-only operations. Access is recorded in the audit trail.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setDecryptError(null);
+                setDecryptOpen(true);
+              }}
+              className="btn btn-danger"
+            >
+              <KeyRound size={15} aria-hidden="true" />
+              Decrypt document
+            </button>
+            <Link to={`/documents/${document.document_id}/audit`} className="btn btn-secondary">
+              <ScrollText size={15} aria-hidden="true" />
+              View audit trail
+            </Link>
+          </div>
+        </section>
+      ) : null}
+
+      <DecryptConfirmDialog
+        open={decryptOpen}
+        documentName={document.name}
+        pending={decrypting}
+        error={decryptError}
+        onConfirm={handleConfirmDecrypt}
+        onCancel={() => {
+          setDecryptOpen(false);
+          setDecryptError(null);
+        }}
+      />
     </>
   );
 }

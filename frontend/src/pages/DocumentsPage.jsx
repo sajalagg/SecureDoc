@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Plus, ScanSearch } from "lucide-react";
+import { Plus, ScanSearch, Upload } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import DocumentCard from "../components/DocumentCard";
 import EmptyState from "../components/EmptyState";
@@ -20,6 +20,10 @@ export default function DocumentsPage() {
             <Link to="/documents/scan" className="btn btn-secondary">
               <ScanSearch size={16} aria-hidden="true" />
               Scan text
+            </Link>
+            <Link to="/documents/upload" className="btn btn-secondary">
+              <Upload size={16} aria-hidden="true" />
+              Upload document
             </Link>
             <Link to="/documents/new" className="btn btn-primary">
               <Plus size={16} aria-hidden="true" />

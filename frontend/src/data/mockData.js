@@ -302,3 +302,52 @@ export const mockSecurityStatus = {
   accessControlled: true,
   detectionTypes: ["PASSWORD", "API_KEY", "CREDIT_CARD", "EMAIL"],
 };
+
+// Safe mock audit records mirroring the backend AuditRecord shape
+// { timestamp, user_id, document_id, action, result }. Events and outcomes
+// only — no content, no secrets. New records are appended in memory by
+// documentService during the session.
+export const mockAuditRecords = [
+  {
+    timestamp: "2026-09-05T09:12:00Z",
+    user_id: 1,
+    document_id: "7c2f9a1e-4b6d-4c3a-8e5f-1a2b3c4d5e6f",
+    action: "DOCUMENT_CREATED",
+    result: "SUCCESS",
+  },
+  {
+    timestamp: "2026-09-05T09:14:00Z",
+    user_id: 1,
+    document_id: "7c2f9a1e-4b6d-4c3a-8e5f-1a2b3c4d5e6f",
+    action: "DOCUMENT_ACCESSED",
+    result: "SUCCESS",
+  },
+  {
+    timestamp: "2026-09-06T14:03:00Z",
+    user_id: 3,
+    document_id: "7c2f9a1e-4b6d-4c3a-8e5f-1a2b3c4d5e6f",
+    action: "ACCESS_DENIED",
+    result: "DENIED",
+  },
+  {
+    timestamp: "2026-09-07T10:45:00Z",
+    user_id: 5,
+    document_id: "7c2f9a1e-4b6d-4c3a-8e5f-1a2b3c4d5e6f",
+    action: "DOCUMENT_ACCESSED",
+    result: "SUCCESS",
+  },
+  {
+    timestamp: "2026-09-04T11:20:00Z",
+    user_id: 2,
+    document_id: "91a4c7d2-8f3e-4b1a-9c6d-2e4f5a6b7c8d",
+    action: "DOCUMENT_CREATED",
+    result: "SUCCESS",
+  },
+  {
+    timestamp: "2026-09-04T11:25:00Z",
+    user_id: 2,
+    document_id: "91a4c7d2-8f3e-4b1a-9c6d-2e4f5a6b7c8d",
+    action: "DOCUMENT_ACCESSED",
+    result: "SUCCESS",
+  },
+];
