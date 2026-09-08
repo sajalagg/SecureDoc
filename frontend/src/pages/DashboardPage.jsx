@@ -1,6 +1,5 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Info, Plus } from "lucide-react";
+import { ArrowRight, Plus } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import SecurityStatusCard from "../components/SecurityStatusCard";
 import DocumentCard from "../components/DocumentCard";
@@ -11,13 +10,7 @@ import { useAuth } from "../context/useAuth";
 export default function DashboardPage() {
   const { documents, loading } = useDocuments();
   const { user } = useAuth();
-  const [showNotice, setShowNotice] = useState(false);
   const recent = documents.slice(0, 4);
-
-  const handleNewDocument = () => {
-    setShowNotice(true);
-    window.setTimeout(() => setShowNotice(false), 3200);
-  };
 
   return (
     <>
@@ -26,22 +19,12 @@ export default function DashboardPage() {
         title="SecureDoc"
         description="Protect sensitive fields without locking the entire document."
         actions={
-          <button type="button" onClick={handleNewDocument} className="btn btn-primary">
+          <Link to="/documents/new" className="btn btn-primary">
             <Plus size={16} aria-hidden="true" />
             New Document
-          </button>
+          </Link>
         }
       />
-
-      {showNotice ? (
-        <div
-          role="status"
-          className="mt-5 flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-300"
-        >
-          <Info size={15} aria-hidden="true" />
-          Document creation is not part of this preview yet.
-        </div>
-      ) : null}
 
       <div className="mt-6">
         <SecurityStatusCard />
@@ -66,17 +49,17 @@ export default function DashboardPage() {
             <p className="text-sm text-text-secondary">Loading documents…</p>
           ) : recent.length > 0 ? (
             recent.map((document) => (
-              <DocumentCard key={document.id} document={document} />
+              <DocumentCard key={document.document_id} document={document} />
             ))
           ) : (
             <EmptyState
               title="No documents yet"
               description="Documents you protect will appear here."
               action={
-                <button type="button" onClick={handleNewDocument} className="btn btn-primary">
+                <Link to="/documents/new" className="btn btn-primary">
                   <Plus size={16} aria-hidden="true" />
                   New Document
-                </button>
+                </Link>
               }
             />
           )}

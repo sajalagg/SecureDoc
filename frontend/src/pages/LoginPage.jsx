@@ -131,7 +131,7 @@ export default function LoginPage() {
                   aria-invalid={error ? "true" : undefined}
                   aria-describedby={error ? "login-error" : undefined}
                   placeholder="e.g. alex.chen"
-                  className="mt-1.5 w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-secondary/50"
+                  className="input mt-1.5"
                 />
               </div>
 
@@ -150,7 +150,7 @@ export default function LoginPage() {
                   aria-invalid={error ? "true" : undefined}
                   aria-describedby={error ? "login-error" : undefined}
                   placeholder="••••••••"
-                  className="mt-1.5 w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-secondary/50"
+                  className="input mt-1.5"
                 />
               </div>
 

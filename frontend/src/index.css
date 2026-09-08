@@ -64,6 +64,10 @@
     @apply text-xs font-medium text-text-secondary;
   }
 
+  .input {
+    @apply w-full rounded-xl border border-border bg-background px-3.5 py-2.5 text-sm text-text-primary placeholder:text-text-secondary/50;
+  }
+
   .prose-muted {
     @apply text-sm leading-6 text-text-secondary;
   }

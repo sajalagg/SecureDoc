@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Info, Plus } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Plus, ScanSearch } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import DocumentCard from "../components/DocumentCard";
 import EmptyState from "../components/EmptyState";
@@ -8,12 +8,6 @@ import { pluralize } from "../lib/format";
 
 export default function DocumentsPage() {
   const { documents, loading } = useDocuments();
-  const [showNotice, setShowNotice] = useState(false);
-
-  const handleNewDocument = () => {
-    setShowNotice(true);
-    window.setTimeout(() => setShowNotice(false), 3200);
-  };
 
   return (
     <>
@@ -22,22 +16,18 @@ export default function DocumentsPage() {
         title="Documents"
         description="Documents in this workspace. Sensitive fields are shown masked."
         actions={
-          <button type="button" onClick={handleNewDocument} className="btn btn-primary">
-            <Plus size={16} aria-hidden="true" />
-            New Document
-          </button>
+          <>
+            <Link to="/documents/scan" className="btn btn-secondary">
+              <ScanSearch size={16} aria-hidden="true" />
+              Scan text
+            </Link>
+            <Link to="/documents/new" className="btn btn-primary">
+              <Plus size={16} aria-hidden="true" />
+              New document
+            </Link>
+          </>
         }
       />
-
-      {showNotice ? (
-        <div
-          role="status"
-          className="mt-5 flex items-center gap-2 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-300"
-        >
-          <Info size={15} aria-hidden="true" />
-          Document creation is not part of this preview yet.
-        </div>
-      ) : null}
 
       <div className="mt-6">
         {loading ? (
@@ -46,7 +36,7 @@ export default function DocumentsPage() {
           <div className="space-y-3">
             <p className="text-sm text-text-secondary">{pluralize(documents.length, "document")}</p>
             {documents.map((document) => (
-              <DocumentCard key={document.id} document={document} showPreview />
+              <DocumentCard key={document.document_id} document={document} showPreview />
             ))}
           </div>
         ) : (
@@ -54,10 +44,10 @@ export default function DocumentsPage() {
             title="No documents yet"
             description="Protected documents you create will appear here."
             action={
-              <button type="button" onClick={handleNewDocument} className="btn btn-primary">
+              <Link to="/documents/new" className="btn btn-primary">
                 <Plus size={16} aria-hidden="true" />
-                New Document
-              </button>
+                New document
+              </Link>
             }
           />
         )}
