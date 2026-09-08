@@ -6,16 +6,19 @@ from typing import Any, Dict, List, Optional
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
 from app.auth.auth import AuthorizationError, Role, User
 from app.auth.tokens import TokenError, create_access_token, read_access_token
 from app.documents.adapters import DocumentFormatError, TextDocumentAdapter, read_document_file
+from app.encryption.crypto import DecryptionError
 from app.services.document_service import redact_document, scan_document
 from app.services.security_service import (
     authenticate_user, create_document, decrypt_document_as_admin,
-    get_audit_for_document_as_admin, get_document_for_user, get_masked_document_for_user,
+    delete_document_as_admin, get_audit_for_document_as_admin,
+    get_document_for_user, get_masked_document_for_user,
     list_documents_for_user, register_user,
 )
 from app.storage.repository import SQLiteRepository
@@ -47,11 +50,20 @@ class LoginRequest(RegisterRequest):
     """Credentials accepted by the login route."""
 
 
+class UserProfileResponse(BaseModel):
+    """Public user identity information."""
+
+    id: int
+    username: str
+    role: str
+
+
 class TokenResponse(BaseModel):
     """A short-lived bearer token response."""
 
     access_token: str
     token_type: str = "bearer"
+    user: Optional[UserProfileResponse] = None
 
 
 class DocumentCreateRequest(BaseModel):
@@ -83,6 +95,18 @@ def create_app(database_path: Optional[Path] = None) -> FastAPI:
     """Build the API with a chosen SQLite location, useful for tests and deployment."""
     repository = SQLiteRepository(database_path or Path(os.environ.get("SECUREDOC_DATABASE_PATH", "securedoc.db")))
     app = FastAPI(title="SecureDoc API", version="0.1.0")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+        ],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     # Exposed for controlled application setup and integration tests, not routes.
     app.state.repository = repository
     bearer_scheme = HTTPBearer(auto_error=False)
@@ -107,7 +131,8 @@ def create_app(database_path: Optional[Path] = None) -> FastAPI:
             user = register_user(repository, request.username, request.password, Role.USER)
         except ValueError as error:
             raise HTTPException(status.HTTP_409_CONFLICT, str(error))
-        return TokenResponse(access_token=create_access_token(user))
+        user_profile = UserProfileResponse(id=user.user_id, username=user.username, role=user.role.value)
+        return TokenResponse(access_token=create_access_token(user), user=user_profile)
 
     @app.post("/auth/login", response_model=TokenResponse)
     def login(request: LoginRequest):
@@ -115,7 +140,13 @@ def create_app(database_path: Optional[Path] = None) -> FastAPI:
         user = authenticate_user(repository, request.username, request.password)
         if user is None:
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid username or password.")
-        return TokenResponse(access_token=create_access_token(user))
+        user_profile = UserProfileResponse(id=user.user_id, username=user.username, role=user.role.value)
+        return TokenResponse(access_token=create_access_token(user), user=user_profile)
+
+    @app.get("/auth/me", response_model=UserProfileResponse)
+    def me(user: User = Depends(current_user)):
+        """Return the profile of the currently authenticated user."""
+        return UserProfileResponse(id=user.user_id, username=user.username, role=user.role.value)
 
     @app.post("/documents/scan")
     def scan(request: ScanRequest, user: User = Depends(current_user)):
@@ -130,7 +161,7 @@ def create_app(database_path: Optional[Path] = None) -> FastAPI:
             document = create_document(repository, user, document_id, request.text)
         except ValueError as error:
             raise HTTPException(status.HTTP_409_CONFLICT, str(error))
-        return _document_response(document)
+        return _document_response(document, user)
 
     @app.post("/documents/upload", status_code=status.HTTP_201_CREATED)
     async def upload_and_protect(
@@ -184,6 +215,8 @@ def create_app(database_path: Optional[Path] = None) -> FastAPI:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Document was not found.")
         except AuthorizationError as error:
             raise HTTPException(status.HTTP_403_FORBIDDEN, str(error))
+        except DecryptionError as error:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Decryption failed: {error}")
 
     @app.get("/documents/{document_id}/audit")
     def audit(document_id: str, user: User = Depends(current_user)):
@@ -193,6 +226,17 @@ def create_app(database_path: Optional[Path] = None) -> FastAPI:
         except AuthorizationError as error:
             raise HTTPException(status.HTTP_403_FORBIDDEN, str(error))
         return {"records": [record.__dict__ for record in records]}
+
+    @app.delete("/documents/{document_id}", status_code=status.HTTP_200_OK)
+    def delete_document_endpoint(document_id: str, user: User = Depends(current_user)):
+        """Delete a document only after ADMIN role authorization succeeds."""
+        try:
+            delete_document_as_admin(repository, user, document_id)
+            return {"document_id": document_id, "deleted": True}
+        except KeyError:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Document was not found.")
+        except AuthorizationError as error:
+            raise HTTPException(status.HTTP_403_FORBIDDEN, str(error))
 
     return app
 

@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Link, useLocation, useParams } from "react-router-dom";
-import { ArrowLeft, KeyRound, ScrollText, ShieldCheck } from "lucide-react";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, KeyRound, ScrollText, ShieldCheck, Trash2 } from "lucide-react";
 import PageHeader from "../components/PageHeader";
 import StatusBadge from "../components/StatusBadge";
 import DocumentTypeBadge from "../components/DocumentTypeBadge";
@@ -8,14 +8,16 @@ import SensitiveTypeBadge from "../components/SensitiveTypeBadge";
 import ProtectedFragment from "../components/ProtectedFragment";
 import EmptyState from "../components/EmptyState";
 import DecryptConfirmDialog from "../components/DecryptConfirmDialog";
+import DeleteConfirmDialog from "../components/DeleteConfirmDialog";
 import { useDocument } from "../hooks/useDocument";
 import { useAuth } from "../context/useAuth";
-import { decryptDocument } from "../services/documentService";
+import { decryptDocument, deleteDocument } from "../services/documentService";
 import { formatDate, pluralize } from "../lib/format";
 import { splitProtectedText } from "../lib/fragmentText";
 
 export default function DocumentDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { document, loading, notFound } = useDocument(id);
   const { role } = useAuth();
   const location = useLocation();
@@ -23,6 +25,9 @@ export default function DocumentDetailPage() {
   const [decryptOpen, setDecryptOpen] = useState(false);
   const [decrypting, setDecrypting] = useState(false);
   const [decryptError, setDecryptError] = useState(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
   const [plaintext, setPlaintext] = useState(null);
 
   if (loading) {
@@ -73,6 +78,24 @@ export default function DocumentDetailPage() {
       setDecryptError(err.message);
     } finally {
       setDecrypting(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (deleting) return;
+    setDeleteError(null);
+    setDeleting(true);
+    try {
+      await deleteDocument(document.document_id);
+      setDeleteOpen(false);
+      navigate("/documents", {
+        replace: true,
+        state: { deleted: true, documentName: document.name },
+      });
+    } catch (err) {
+      setDeleteError(err.message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -252,7 +275,7 @@ export default function DocumentDetailPage() {
                 setDecryptError(null);
                 setDecryptOpen(true);
               }}
-              className="btn btn-danger"
+              className="btn btn-secondary"
             >
               <KeyRound size={15} aria-hidden="true" />
               Decrypt document
@@ -261,6 +284,17 @@ export default function DocumentDetailPage() {
               <ScrollText size={15} aria-hidden="true" />
               View audit trail
             </Link>
+            <button
+              type="button"
+              onClick={() => {
+                setDeleteError(null);
+                setDeleteOpen(true);
+              }}
+              className="btn btn-danger"
+            >
+              <Trash2 size={15} aria-hidden="true" />
+              Delete document
+            </button>
           </div>
         </section>
       ) : null}
@@ -274,6 +308,18 @@ export default function DocumentDetailPage() {
         onCancel={() => {
           setDecryptOpen(false);
           setDecryptError(null);
+        }}
+      />
+
+      <DeleteConfirmDialog
+        open={deleteOpen}
+        documentName={document.name}
+        pending={deleting}
+        error={deleteError}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => {
+          setDeleteOpen(false);
+          setDeleteError(null);
         }}
       />
     </>

@@ -1,22 +1,22 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { getDocuments } from "../services/documentService";
 
 export function useDocuments() {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let active = true;
-    getDocuments().then((docs) => {
-      if (active) {
-        setDocuments(docs);
-        setLoading(false);
-      }
-    });
-    return () => {
-      active = false;
-    };
+  const reload = useCallback(async () => {
+    try {
+      const docs = await getDocuments();
+      setDocuments(docs);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  return { documents, loading };
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  return { documents, loading, reload };
 }

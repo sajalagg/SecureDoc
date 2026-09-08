@@ -50,6 +50,7 @@ const ACCESS_ROWS = [
   { capability: "View all documents", user: false, admin: true },
   { capability: "View masked content", user: true, admin: true },
   { capability: "Decrypt protected content", user: false, admin: true },
+  { capability: "Delete documents", user: false, admin: true },
   { capability: "View audit trail", user: false, admin: true },
 ];
 
@@ -60,6 +61,7 @@ const AUDIT_EVENTS = [
   "DOCUMENT_CREATED",
   "DOCUMENT_ACCESSED",
   "DOCUMENT_DECRYPTED",
+  "DOCUMENT_DELETED",
   "ACCESS_DENIED",
 ];
 

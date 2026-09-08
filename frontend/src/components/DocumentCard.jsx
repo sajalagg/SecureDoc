@@ -1,10 +1,10 @@
 import { Link } from "react-router-dom";
-import { ChevronRight, KeyRound } from "lucide-react";
+import { ChevronRight, KeyRound, Trash2 } from "lucide-react";
 import { formatDate, pluralize } from "../lib/format";
 import StatusBadge from "./StatusBadge";
 import DocumentTypeBadge from "./DocumentTypeBadge";
 
-export default function DocumentCard({ document, showPreview = false }) {
+export default function DocumentCard({ document, showPreview = false, onDelete }) {
   const preview = document.maskedPreview
     ? document.maskedPreview.split("\n").join("  ·  ")
     : "";
@@ -38,6 +38,21 @@ export default function DocumentCard({ document, showPreview = false }) {
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <StatusBadge status={document.status} />
+          {onDelete ? (
+            <button
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onDelete(document);
+              }}
+              title="Delete document (Admin)"
+              aria-label={`Delete ${document.name}`}
+              className="rounded-lg p-1.5 text-text-secondary transition hover:bg-rose-500/10 hover:text-rose-400"
+            >
+              <Trash2 size={16} aria-hidden="true" />
+            </button>
+          ) : null}
           <ChevronRight
             size={16}
             className="text-text-secondary transition-colors group-hover:text-primary"
